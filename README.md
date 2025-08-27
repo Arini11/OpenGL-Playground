@@ -1,5 +1,10 @@
+# Setup Basico OpenGL (glfw + glad) Linux
 https://medium.com/geekculture/a-beginners-guide-to-setup-opengl-in-linux-debian-2bfe02ccd1e
 
+# Compilar y ejecutar
+```
+g++ main.cpp shaderClass.cpp glad.c -ldl -lglfw && ./a.out
+```
 
 # Esquema ciclo vida shaders OpenGL
 (más o menos)
