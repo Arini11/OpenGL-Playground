@@ -44,60 +44,9 @@ int main()
         return -1;
     }
 
-    // ---------------------------
-    // 1) SHADERS Y PROGRAMA
-    //    (después de GLAD, antes del bucle)
-    // ---------------------------
-	// vertexShaderSource
-    const char* vsrc = R"(
-        #version 330 core
-        layout (location = 0) in vec3 aPos;
-        void main() {
-            gl_Position = vec4(aPos, 1.0); // lo mismo que (aPos.x, aPos.y, aPos.z, 1.0)
-        }
-    )";
-	// fragmentShaderSource
-    const char* fsrc = R"(
-        #version 330 core
-        out vec4 FragColor;
-        void main() {
-            FragColor = vec4(1.0, 0.6, 0.1, 1.0); // color naranja (R G B Alpha)
-        }
-    )";
 
-	// Funcion para asignar src al shader y compilar
-	// Como tenemos que hacer lo mismo con vertexShader y fragmentShader, hacemos una funcion para reutilizar codigo
-    auto compileShader = [](GLenum type, const char* src) -> GLuint {
-        GLuint s = glCreateShader(type); // crear shader
-        glShaderSource(s, 1, &src, nullptr); // asignar source del shader
-        glCompileShader(s); // compilar shader
-        // Comprobar si ha compilado correctamente
-        GLint ok; 
-        glGetShaderiv(s, GL_COMPILE_STATUS, &ok);
-        if(!ok){
-            char log[1024]; glGetShaderInfoLog(s, 1024, nullptr, log);
-            std::cerr << "Shader compile error:\n" << log << std::endl;
-        }
-        return s;
-    };
+    Shader shaderProgram("default.vert", "default.frag");
 
-    GLuint vs = compileShader(GL_VERTEX_SHADER, vsrc);
-    GLuint fs = compileShader(GL_FRAGMENT_SHADER, fsrc);
-
-	// Programa
-    GLuint program = glCreateProgram();
-    glAttachShader(program, vs);
-    glAttachShader(program, fs);
-    glLinkProgram(program);
-    {
-        GLint ok; glGetProgramiv(program, GL_LINK_STATUS, &ok);
-        if(!ok){
-            char log[1024]; glGetProgramInfoLog(program, 1024, nullptr, log);
-            std::cerr << "Program link error:\n" << log << std::endl;
-        }
-    }
-    glDeleteShader(vs);
-    glDeleteShader(fs);
 
     // ---------------------------
     // 2) DATOS Y BUFFERS (VAO/VBO)
@@ -107,7 +56,7 @@ int main()
 		-0.5f, -0.5f, 0.0f,
 		 0.5f, -0.5f, 0.0f,
 		 0.0f,  0.5f, 0.0f
-	};  
+	};
 
     GLuint VAO = 0, VBO = 0;
     glGenVertexArrays(1, &VAO);
@@ -142,7 +91,7 @@ int main()
         // 3) DIBUJAR EL TRIÁNGULO
         //    (dentro del bucle)
         // ---------------------------
-        glUseProgram(program);
+        shaderProgram.Activate();
         glBindVertexArray(VAO);
         glDrawArrays(GL_TRIANGLES, 0, 3);
         glBindVertexArray(0);
@@ -158,7 +107,7 @@ int main()
     // ---------------------------
     glDeleteVertexArrays(1, &VAO);
     glDeleteBuffers(1, &VBO);
-    glDeleteProgram(program);
+    shaderProgram.Delete();
 
     // glfw: terminate, clearing all previously allocated GLFW resources.
     // ------------------------------------------------------------------
@@ -178,7 +127,7 @@ void processInput(GLFWwindow *window)
 // ---------------------------------------------------------------------------------------------
 void framebuffer_size_callback(GLFWwindow* window, int width, int height)
 {
-    // make sure the viewport matches the new window dimensions; note that width and 
+    // make sure the viewport matches the new window dimensions; note that width and
     // height will be significantly larger than specified on retina displays.
     glViewport(0, 0, width, height);
 }
