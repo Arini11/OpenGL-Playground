@@ -81,6 +81,9 @@ int main()
     // 2. Shaders
     Shader shaderProgram("default.vert", "default.frag");
 
+    // Localizamos uniform una vez
+    unsigned int transformLoc = glGetUniformLocation(shaderProgram.ID, "transform");
+
     // 3. VAO / VBO
 	VAO VAO1;
 	VAO1.Bind();
@@ -114,11 +117,16 @@ int main()
 
         shaderProgram.Activate();
 
+        const glm::mat4 MATRIZ_IDENTIDAD = glm::mat4(1.0f);
+
+        glm::mat4 rotacion = glm::rotate(MATRIZ_IDENTIDAD, rotation, glm::vec3(1.0f, 0.0f, 0.0f));
+        glUniformMatrix4fv(transformLoc, 1, GL_FALSE, glm::value_ptr(rotacion));
+
         // Bind the VAO so OpenGL knows to use it
 		VAO1.Bind();
 
-		// Draw primitives, number of indices, datatype of indices, index of indices
-		glDrawElements(GL_TRIANGLES, 9, GL_UNSIGNED_INT, 0);
+		// Dibujamos el triángulo (3 índices)
+		glDrawElements(GL_TRIANGLES, 3, GL_UNSIGNED_INT, 0);
 
         // glfw: swap buffers and poll IO events (keys pressed/released, mouse moved etc.)
         // -------------------------------------------------------------------------------
@@ -145,14 +153,20 @@ int main()
 // ---------------------------------------------------------------------------------------------------------
 void processInput(GLFWwindow *window)
 {
-    if(glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS)
+    // Cerrar con ESC
+    if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS)
     {
         glfwSetWindowShouldClose(window, true);
     }
-    else if (glfwGetKey(window, GLFW_MOUSE_BUTTON_LEFT) == GLFW_PRESS)
+
+    // Rotar 10º al pulsar ESPACIO
+    static bool spaceWasDown = false;
+    int spaceNow = glfwGetKey(window, GLFW_KEY_SPACE);
+    if (spaceNow == GLFW_PRESS && !spaceWasDown)
     {
-        rotation += glm::radians(10.0f); // sumar 10 grados
+        rotation += glm::radians(10.0f);
     }
+    spaceWasDown = (spaceNow == GLFW_PRESS);
 }
 
 // glfw: whenever the window size changed (by OS or user resize) this callback function executes
