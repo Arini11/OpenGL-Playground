@@ -55,16 +55,19 @@ GLuint indices[] =
 */
 
 
+// Cuadrado
 GLfloat vertices[] =
 {
-//    X                         Y
-	-1.0f     , -1.0f     , 0.0f, // Lower left corner
-	1.0f      , -1.0f     , 0.0f, // Lower right corner
-	0.0f      , 1.0f      , 0.0f, // Upper corner
+//    X          Y
+	-1.0f / 2    , 1.0f  / 2   , 0.0f, // Arriba izq
+	1.0f  / 2    , 1.0f  / 2   , 0.0f, // Arriba der
+	-1.0f / 2    , -1.0f / 2   , 0.0f, // Abajo izq
+    1.0f  / 2    , -1.0f / 2   , 0.0f // Abajo der
 };
 GLuint indices[] =
 {
-	0, 1, 2
+	0, 2, 3, // Triangulo izq
+    0, 1, 3 // Triangulo der
 };
 
 
@@ -126,7 +129,7 @@ int main()
 		VAO1.Bind();
 
 		// Dibujamos el triángulo (3 índices)
-		glDrawElements(GL_TRIANGLES, 3, GL_UNSIGNED_INT, 0);
+		glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
 
         // glfw: swap buffers and poll IO events (keys pressed/released, mouse moved etc.)
         // -------------------------------------------------------------------------------
