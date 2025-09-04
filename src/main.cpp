@@ -1,5 +1,7 @@
 #include <glad/glad.h>
 #include <GLFW/glfw3.h>
+#define STB_IMAGE_IMPLEMENTATION
+
 
 #include <iostream>
 #include <cmath>
@@ -12,6 +14,7 @@
 #include "VAO.h"
 #include "VBO.h"
 #include "EBO.h"
+#include <stb_image.h>
 
 void framebuffer_size_callback(GLFWwindow* window, int width, int height);
 void processInput(GLFWwindow *window);
@@ -58,11 +61,12 @@ GLuint indices[] =
 // Cuadrado
 GLfloat vertices[] =
 {
-//    X          Y
-	-1.0f / 2    , 1.0f  / 2   , 0.0f, // Arriba izq
-	1.0f  / 2    , 1.0f  / 2   , 0.0f, // Arriba der
-	-1.0f / 2    , -1.0f / 2   , 0.0f, // Abajo izq
-    1.0f  / 2    , -1.0f / 2   , 0.0f // Abajo der
+//                  COORDENADAS                 TEXTURA
+//                              [x, y, z, u, v]
+	-1.0f / 2    , 1.0f  / 2   , 0.0f,         0.0f, 0.0f, // Arriba izq
+	1.0f  / 2    , 1.0f  / 2   , 0.0f,         1.0f, 0.0f, // Arriba der
+	-1.0f / 2    , -1.0f / 2   , 0.0f,         0.0f, 1.0f, // Abajo izq
+    1.0f  / 2    , -1.0f / 2   , 0.0f,         1.0f, 1.0f, // Abajo der
 };
 GLuint indices[] =
 {
@@ -96,13 +100,40 @@ int main()
 	// Generates Element Buffer Object and links it to indices
 	EBO EBO1(indices, sizeof(indices));
 
-	// Links VBO to VAO
-	VAO1.LinkVBO(VBO1, 0);
+	// Links VBO attributes: position (loc=0) and texcoords (loc=1)
+	VAO1.LinkAttrib(VBO1, 0, 3, GL_FLOAT, 5 * sizeof(float), (void*)0);
+	VAO1.LinkAttrib(VBO1, 1, 2, GL_FLOAT, 5 * sizeof(float), (void*)(3 * sizeof(float)));
 
 	// Unbind all to prevent accidentally modifying them
 	VAO1.Unbind();
 	VBO1.Unbind();
 	EBO1.Unbind();
+
+
+    // Texturas
+    int imgWidth, imgHeight,  numColCh;
+    unsigned char* bytes = stbi_load("default_dirt.png",&imgWidth, &imgHeight, &numColCh, 0);
+
+    GLuint texture;
+    glGenTextures(1, &texture);
+    glActiveTexture(GL_TEXTURE0);
+    glBindTexture(GL_TEXTURE_2D, texture);
+
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, imgWidth, imgHeight, 0, GL_RGBA, GL_UNSIGNED_BYTE, bytes);
+    glGenerateMipmap(GL_TEXTURE_2D);
+
+    stbi_image_free(bytes);
+    glBindTexture(GL_TEXTURE_2D, 0);
+
+    GLuint tex0Uni = glGetUniformLocation(shaderProgram.ID, "tex0");
+    shaderProgram.Activate();
+    glUniform1i(tex0Uni,0);
 
 
     // render loop
@@ -119,14 +150,28 @@ int main()
         glClear(GL_COLOR_BUFFER_BIT);
 
         shaderProgram.Activate();
+        glBindTexture(GL_TEXTURE_2D, texture);
+
 
         const glm::mat4 MATRIZ_IDENTIDAD = glm::mat4(1.0f);
 
-        glm::mat4 rotacion = glm::rotate(MATRIZ_IDENTIDAD, rotation, glm::vec3(1.0f, 0.0f, 0.0f));
-        glUniformMatrix4fv(transformLoc, 1, GL_FALSE, glm::value_ptr(rotacion));
+        // Compensar aspect ratio para que el quad sea cuadrado en pantalla
+        int fbW = 0, fbH = 0;
+        glfwGetFramebufferSize(window, &fbW, &fbH);
+        float aspectFixX = (fbW > 0 && fbH > 0) ? (static_cast<float>(fbH) / static_cast<float>(fbW)) : 1.0f;
+        glm::mat4 aspectScale = glm::scale(MATRIZ_IDENTIDAD, glm::vec3(aspectFixX, 1.0f, 1.0f));
 
-        // Bind the VAO so OpenGL knows to use it
-		VAO1.Bind();
+        // Rotación en Z (plano de pantalla)
+        glm::mat4 rotacion = glm::rotate(MATRIZ_IDENTIDAD, rotation, glm::vec3(0.0f, 0.0f, 1.0f));
+
+        glm::mat4 transform = aspectScale * rotacion;
+        glUniformMatrix4fv(transformLoc, 1, GL_FALSE, glm::value_ptr(transform));
+
+            // Bind textura (si está creada) y luego el VAO
+            glActiveTexture(GL_TEXTURE0);
+            glBindTexture(GL_TEXTURE_2D, texture);
+            // Bind the VAO so OpenGL knows to use it
+            VAO1.Bind();
 
 		// Dibujamos el triángulo (3 índices)
 		glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
@@ -144,6 +189,7 @@ int main()
 	VAO1.Delete();
 	VBO1.Delete();
 	EBO1.Delete();
+    glDeleteTextures(1,&texture);
 	shaderProgram.Delete();
 
     // glfw: terminate, clearing all previously allocated GLFW resources.
