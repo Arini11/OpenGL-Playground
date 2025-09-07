@@ -75,6 +75,8 @@ GLuint indices[] =
 
 
 float rotation = 0.0f; // ángulo en radianes
+float posX = 0.0f;     // posición en X
+float posY = 0.0f;     // posición en Y
 
 
 
@@ -143,8 +145,11 @@ int main()
 
         // Rotación en Z (plano de pantalla)
         glm::mat4 rotacion = glm::rotate(MATRIZ_IDENTIDAD, rotation, glm::vec3(0.0f, 0.0f, 1.0f));
+        // Traslación con WASD
+        glm::mat4 traslacion = glm::translate(MATRIZ_IDENTIDAD, glm::vec3(posX, posY, 0.0f));
 
-        glm::mat4 transform = aspectScale * rotacion;
+        // Primero rotación y aspect, luego desplazamiento en pantalla
+        glm::mat4 transform = traslacion * aspectScale * rotacion;
         glUniformMatrix4fv(transformLoc, 1, GL_FALSE, glm::value_ptr(transform));
 
         // Bind textura y luego el VAO
@@ -195,6 +200,44 @@ void processInput(GLFWwindow *window)
         rotation += glm::radians(10.0f);
     }
     spaceWasDown = (spaceNow == GLFW_PRESS);
+
+    // Movimiento WASD continuo con delta time
+    static double lastTime = glfwGetTime();
+    double now = glfwGetTime();
+    float dt = static_cast<float>(now - lastTime);
+    lastTime = now;
+
+    const float speed = 0.8f; // unidades por segundo
+    if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS)
+        posY += speed * dt;
+    if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS)
+        posY -= speed * dt;
+    if (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS)
+        posX -= speed * dt;
+    if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS)
+        posX += speed * dt;
+
+    // Limitar para que no se salga de pantalla
+    int fbW = 0, fbH = 0;
+    glfwGetFramebufferSize(window, &fbW, &fbH);
+    float aspectFixX = (fbW > 0 && fbH > 0) ? (static_cast<float>(fbH) / static_cast<float>(fbW)) : 1.0f;
+
+    float c = fabsf(cosf(rotation));
+    float s = fabsf(sinf(rotation));
+    // Media anchura/altura del AABB tras escalar y rotar (NDC)
+    float halfW = 0.5f * (aspectFixX * c + s);
+    float halfH = 0.5f * (aspectFixX * s + c);
+
+    // Clamp para mantener el AABB dentro de [-1,1]
+    float minX = -1.0f + halfW;
+    float maxX =  1.0f - halfW;
+    float minY = -1.0f + halfH;
+    float maxY =  1.0f - halfH;
+
+    if (posX < minX) posX = minX;
+    if (posX > maxX) posX = maxX;
+    if (posY < minY) posY = minY;
+    if (posY > maxY) posY = maxY;
 }
 
 // glfw: whenever the window size changed (by OS or user resize) this callback function executes
