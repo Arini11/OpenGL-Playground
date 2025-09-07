@@ -210,14 +210,19 @@ void processInput(GLFWwindow *window)
     float halfW = 0.5f * scaleFactor * (aspectFixX * c + s);
     float halfH = 0.5f * scaleFactor * (aspectFixX * s + c);
 
-    // Clamp para mantener el AABB dentro de [-1,1]
+    // Clamp en coordenadas clip [-1,1]
     float minX = -1.0f + halfW;
     float maxX =  1.0f - halfW;
     float minY = -1.0f + halfH;
     float maxY =  1.0f - halfH;
 
-    if (posX < minX) posX = minX;
-    if (posX > maxX) posX = maxX;
+    // Convertir clamp X a espacio de posición (antes del aspect),
+    // ya que x_ndc = aspectFixX * posX en el pipeline actual
+    float minXPos = (aspectFixX > 0.0f) ? (minX / aspectFixX) : minX;
+    float maxXPos = (aspectFixX > 0.0f) ? (maxX / aspectFixX) : maxX;
+
+    if (posX < minXPos) posX = minXPos;
+    if (posX > maxXPos) posX = maxXPos;
     if (posY < minY) posY = minY;
     if (posY > maxY) posY = maxY;
 }
