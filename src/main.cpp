@@ -1,6 +1,5 @@
 #include <glad/glad.h>
 #include <GLFW/glfw3.h>
-#define STB_IMAGE_IMPLEMENTATION
 
 
 #include <iostream>
@@ -14,7 +13,7 @@
 #include "VAO.h"
 #include "VBO.h"
 #include "EBO.h"
-#include <stb_image.h>
+#include "Texture.h"
 
 void framebuffer_size_callback(GLFWwindow* window, int width, int height);
 void processInput(GLFWwindow *window);
@@ -110,26 +109,8 @@ int main()
 	EBO1.Unbind();
 
 
-    // Texturas
-    int imgWidth, imgHeight,  numColCh;
-    unsigned char* bytes = stbi_load("default_dirt.png",&imgWidth, &imgHeight, &numColCh, 0);
-
-    GLuint texture;
-    glGenTextures(1, &texture);
-    glActiveTexture(GL_TEXTURE0);
-    glBindTexture(GL_TEXTURE_2D, texture);
-
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
-
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, imgWidth, imgHeight, 0, GL_RGBA, GL_UNSIGNED_BYTE, bytes);
-    glGenerateMipmap(GL_TEXTURE_2D);
-
-    stbi_image_free(bytes);
-    glBindTexture(GL_TEXTURE_2D, 0);
+    // Texturas (usamos la clase Texture)
+    Texture texture0("default_dirt.png");
 
     GLuint tex0Uni = glGetUniformLocation(shaderProgram.ID, "tex0");
     shaderProgram.Activate();
@@ -150,7 +131,6 @@ int main()
         glClear(GL_COLOR_BUFFER_BIT);
 
         shaderProgram.Activate();
-        glBindTexture(GL_TEXTURE_2D, texture);
 
 
         const glm::mat4 MATRIZ_IDENTIDAD = glm::mat4(1.0f);
@@ -167,11 +147,10 @@ int main()
         glm::mat4 transform = aspectScale * rotacion;
         glUniformMatrix4fv(transformLoc, 1, GL_FALSE, glm::value_ptr(transform));
 
-            // Bind textura (si está creada) y luego el VAO
-            glActiveTexture(GL_TEXTURE0);
-            glBindTexture(GL_TEXTURE_2D, texture);
-            // Bind the VAO so OpenGL knows to use it
-            VAO1.Bind();
+        // Bind textura y luego el VAO
+        texture0.Bind(GL_TEXTURE0);
+        // Bind the VAO so OpenGL knows to use it
+        VAO1.Bind();
 
 		// Dibujamos el triángulo (3 índices)
 		glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
@@ -189,8 +168,8 @@ int main()
 	VAO1.Delete();
 	VBO1.Delete();
 	EBO1.Delete();
-    glDeleteTextures(1,&texture);
-	shaderProgram.Delete();
+    texture0.Delete();
+    shaderProgram.Delete();
 
     // glfw: terminate, clearing all previously allocated GLFW resources.
     // ------------------------------------------------------------------

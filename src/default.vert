@@ -4,7 +4,6 @@
 layout (location = 0) in vec3 aPos;
 // Textura
 layout (location = 1) in vec2 aTex;
-
 // Transformacion
 uniform mat4 transform;
 
