@@ -77,6 +77,7 @@ GLuint indices[] =
 float rotation = 0.0f; // ángulo en radianes
 float posX = 0.0f;     // posición en X
 float posY = 0.0f;     // posición en Y
+float scaleFactor = 1.0f; // escala uniforme
 
 
 
@@ -145,11 +146,13 @@ int main()
 
         // Rotación en Z (plano de pantalla)
         glm::mat4 rotacion = glm::rotate(MATRIZ_IDENTIDAD, rotation, glm::vec3(0.0f, 0.0f, 1.0f));
+        // Escala uniforme controlada por teclado
+        glm::mat4 escala = glm::scale(MATRIZ_IDENTIDAD, glm::vec3(scaleFactor, scaleFactor, 1.0f));
         // Traslación con WASD
         glm::mat4 traslacion = glm::translate(MATRIZ_IDENTIDAD, glm::vec3(posX, posY, 0.0f));
 
-        // Primero rotación y aspect, luego desplazamiento en pantalla
-        glm::mat4 transform = traslacion * aspectScale * rotacion;
+        // Orden: rotación -> escala -> aspect -> traslación
+        glm::mat4 transform = traslacion * aspectScale * rotacion * escala;
         glUniformMatrix4fv(transformLoc, 1, GL_FALSE, glm::value_ptr(transform));
 
         // Bind textura y luego el VAO
@@ -217,6 +220,18 @@ void processInput(GLFWwindow *window)
     if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS)
         posX += speed * dt;
 
+    // Escala con + y - (teclado principal y numérico)
+    const float zoomSpeed = 1.2f; // unidades de escala por segundo
+    bool plusPressed = glfwGetKey(window, GLFW_KEY_KP_ADD) == GLFW_PRESS || glfwGetKey(window, GLFW_KEY_EQUAL) == GLFW_PRESS;
+    bool minusPressed = glfwGetKey(window, GLFW_KEY_KP_SUBTRACT) == GLFW_PRESS || glfwGetKey(window, GLFW_KEY_MINUS) == GLFW_PRESS;
+    if (plusPressed)
+        scaleFactor += zoomSpeed * dt;
+    if (minusPressed)
+        scaleFactor -= zoomSpeed * dt;
+    // límites razonables de escala
+    if (scaleFactor < 0.1f) scaleFactor = 0.1f;
+    if (scaleFactor > 5.0f) scaleFactor = 5.0f;
+
     // Limitar para que no se salga de pantalla
     int fbW = 0, fbH = 0;
     glfwGetFramebufferSize(window, &fbW, &fbH);
@@ -224,9 +239,9 @@ void processInput(GLFWwindow *window)
 
     float c = fabsf(cosf(rotation));
     float s = fabsf(sinf(rotation));
-    // Media anchura/altura del AABB tras escalar y rotar (NDC)
-    float halfW = 0.5f * (aspectFixX * c + s);
-    float halfH = 0.5f * (aspectFixX * s + c);
+    // Media anchura/altura del AABB tras escala, aspect y rotación (NDC)
+    float halfW = 0.5f * scaleFactor * (aspectFixX * c + s);
+    float halfH = 0.5f * scaleFactor * (aspectFixX * s + c);
 
     // Clamp para mantener el AABB dentro de [-1,1]
     float minX = -1.0f + halfW;
