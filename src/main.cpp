@@ -4,6 +4,7 @@
 
 #include <iostream>
 #include <cmath>
+#include <vector>
 
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
@@ -14,6 +15,7 @@
 #include "VBO.h"
 #include "EBO.h"
 #include "Texture.h"
+#include "Cube.h"
 
 void framebuffer_size_callback(GLFWwindow* window, int width, int height);
 void processInput(GLFWwindow *window);
@@ -57,21 +59,7 @@ GLuint indices[] =
 */
 
 
-// Cuadrado
-GLfloat vertices[] =
-{
-//                  COORDENADAS                 TEXTURA
-//                              [x, y, z, u, v]
-	-1.0f / 2    , 1.0f  / 2   , 0.0f,         0.0f, 0.0f, // Arriba izq
-	1.0f  / 2    , 1.0f  / 2   , 0.0f,         1.0f, 0.0f, // Arriba der
-	-1.0f / 2    , -1.0f / 2   , 0.0f,         0.0f, 1.0f, // Abajo izq
-    1.0f  / 2    , -1.0f / 2   , 0.0f,         1.0f, 1.0f, // Abajo der
-};
-GLuint indices[] =
-{
-	0, 2, 3, // Triangulo izq
-    0, 1, 3 // Triangulo der
-};
+// (El cuadrado anterior se ha reemplazado por una clase Cube)
 
 
 float rotation = 0.0f; // ángulo en radianes
@@ -93,23 +81,10 @@ int main()
     // Localizamos uniform una vez
     unsigned int transformLoc = glGetUniformLocation(shaderProgram.ID, "transform");
 
-    // 3. VAO / VBO
-	VAO VAO1;
-	VAO1.Bind();
-
-	// Generates Vertex Buffer Object and links it to vertices
-	VBO VBO1(vertices, sizeof(vertices));
-	// Generates Element Buffer Object and links it to indices
-	EBO EBO1(indices, sizeof(indices));
-
-	// Links VBO attributes: position (loc=0) and texcoords (loc=1)
-	VAO1.LinkAttrib(VBO1, 0, 3, GL_FLOAT, 5 * sizeof(float), (void*)0);
-	VAO1.LinkAttrib(VBO1, 1, 2, GL_FLOAT, 5 * sizeof(float), (void*)(3 * sizeof(float)));
-
-	// Unbind all to prevent accidentally modifying them
-	VAO1.Unbind();
-	VBO1.Unbind();
-	EBO1.Unbind();
+    // 3. Configuración para 3D y lista de cubos
+    glEnable(GL_DEPTH_TEST);
+    std::vector<Cube> cubes;
+    cubes.emplace_back();
 
 
     // Texturas (usamos la clase Texture)
@@ -131,7 +106,7 @@ int main()
         // render
         // ------
         glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
-        glClear(GL_COLOR_BUFFER_BIT);
+        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
         shaderProgram.Activate();
 
@@ -144,24 +119,19 @@ int main()
         float aspectFixX = (fbW > 0 && fbH > 0) ? (static_cast<float>(fbH) / static_cast<float>(fbW)) : 1.0f;
         glm::mat4 aspectScale = glm::scale(MATRIZ_IDENTIDAD, glm::vec3(aspectFixX, 1.0f, 1.0f));
 
-        // Rotación en Z (plano de pantalla)
-        glm::mat4 rotacion = glm::rotate(MATRIZ_IDENTIDAD, rotation, glm::vec3(0.0f, 0.0f, 1.0f));
-        // Escala uniforme controlada por teclado
-        glm::mat4 escala = glm::scale(MATRIZ_IDENTIDAD, glm::vec3(scaleFactor, scaleFactor, 1.0f));
-        // Traslación con WASD
-        glm::mat4 traslacion = glm::translate(MATRIZ_IDENTIDAD, glm::vec3(posX, posY, 0.0f));
+        // Extra: mantener aspecto X
+        glm::mat4 extra = glm::scale(MATRIZ_IDENTIDAD, glm::vec3(aspectFixX, 1.0f, 1.0f));
 
-        // Orden: rotación -> escala -> aspect -> traslación
-        glm::mat4 transform = traslacion * aspectScale * rotacion * escala;
-        glUniformMatrix4fv(transformLoc, 1, GL_FALSE, glm::value_ptr(transform));
+        // Actualizamos el primer cubo con el input actual
+        cubes[0].position = glm::vec3(posX, posY, 0.0f);
+        cubes[0].rotation = glm::vec3(0.0f, 0.0f, rotation);
+        cubes[0].scale    = glm::vec3(scaleFactor);
 
-        // Bind textura y luego el VAO
-        texture0.Bind(GL_TEXTURE0);
-        // Bind the VAO so OpenGL knows to use it
-        VAO1.Bind();
-
-		// Dibujamos el triángulo (3 índices)
-		glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
+        // Dibujar cubos
+        for (auto& c : cubes)
+        {
+            c.Draw(shaderProgram, texture0, transformLoc, extra);
+        }
 
         // glfw: swap buffers and poll IO events (keys pressed/released, mouse moved etc.)
         // -------------------------------------------------------------------------------
@@ -173,9 +143,6 @@ int main()
     // 4) LIMPIEZA (al salir)
     // ---------------------------
     // Delete all the objects we've created
-	VAO1.Delete();
-	VBO1.Delete();
-	EBO1.Delete();
     texture0.Delete();
     shaderProgram.Delete();
 
